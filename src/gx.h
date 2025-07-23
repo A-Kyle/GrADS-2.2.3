@@ -193,7 +193,11 @@ struct gxpsubs {
   void (*gxpsignal) (gaint);
   void (*gxpclip) (gadouble,gadouble,gadouble,gadouble);
   gadouble (*gxpch) (char,gaint,gadouble,gadouble,gadouble,gadouble,gadouble);
+  gadouble (*gxpu8) (char*,gaint,gadouble,gadouble,gadouble,gadouble,gadouble);
   gadouble (*gxpqchl) (char,gaint,gadouble);
+  gadouble (*gxpqchh) (char,gaint,gadouble);
+  gadouble (*gxpqu8l) (char*,gaint,gadouble);
+  gadouble (*gxpqu8h) (char*,gaint,gadouble);
 };
 
 /* Structure that contains the function pointers to the display subroutines */
@@ -205,6 +209,9 @@ struct gxdsubs {
   void (*gxdbgn) (gadouble,gadouble);
   void (*gxdbtn) (gaint,gadouble*,gadouble*,gaint*,gaint*,gaint*,gadouble*);
   gadouble (*gxdch) (char,gaint,gadouble,gadouble,gadouble,gadouble,gadouble);
+  gadouble (*gxdchv) (char,gaint,gadouble,gadouble,gadouble,gadouble,gadouble);
+  gadouble (*gxdu8) (char*,gaint,gadouble,gadouble,gadouble,gadouble,gadouble);
+  gadouble (*gxdu8v) (char*,gaint,gadouble,gadouble,gadouble,gadouble,gadouble);
   void (*gxdclip) (gadouble,gadouble,gadouble,gadouble);
   void (*gxdcol) (int);
   void (*gxddbl) (void);
@@ -221,6 +228,9 @@ struct gxdsubs {
   void (*gxdpbn) (int,struct gbtn *,int,int,int);
   void (*gxdptn) (gaint,gaint,gaint);
   gadouble (*gxdqchl) (char,gaint,gadouble);
+  gadouble (*gxdqchh) (char,gaint,gadouble);
+  gadouble (*gxdqu8l) (char*,gaint,gadouble);
+  gadouble (*gxdqu8h) (char*,gaint,gadouble);
   void (*gxdrbb) (gaint,gaint,gadouble,gadouble,gadouble,gadouble,gaint);
   void (*gxdrec) (gadouble,gadouble,gadouble,gadouble);
   void (*gxdcirc) (gadouble,gadouble,gadouble,gaint);
@@ -331,6 +341,9 @@ void gxmaskclear (void);
    gxgnam: Get full path name
    gxptrn: Set fill pattern
    gxqchl: Query the width of a character 
+   gxqchh: Query the height of a character 
+   gxqu8l: Query the width of a UTF-8 symbol
+   gxqu8h: Query the height of a UTF-8 symbol
    gxload: Loads the display/printing graphics routines
    getpsubs: Passes the pointer containing printing function pointers
    getdsubs: Passes the pointer containing printing function pointers
@@ -354,6 +367,7 @@ void gxvcon (gadouble, gadouble, gadouble *, gadouble *);
 void gxvcon2 (gadouble, gadouble, gadouble *, gadouble *);
 void gxppvp (gadouble, gadouble, gadouble *, gadouble *);
 void gxppvp2 (gadouble, gadouble *);
+void gxppvp2h (gadouble, gadouble *);
 void gxscal (gadouble, gadouble, gadouble, gadouble, gadouble, gadouble, gadouble, gadouble);
 void gxproj ( void (*) (gadouble, gadouble, gadouble*, gadouble*) );
 void gxgrid ( void (*) (gadouble, gadouble, gadouble*, gadouble*) );
@@ -376,7 +390,13 @@ void gxptrn (int, int, int);
 char *gxgsym(char *);
 char *gxgnam(char *);
 gadouble gxdrawch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxdrawchv (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxdrawu8 (char*, char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxdrawu8v (char*, char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
 gadouble gxqchl (char, gaint, gadouble);
+gadouble gxqchh (char, gaint, gadouble);
+gadouble gxqu8l (char*, gaint, gadouble);
+gadouble gxqu8h (char*, gaint, gadouble);
 void gxsignal (gaint);
 gaint gxload(char *, char *);
 struct gxpsubs *getpsubs(void);
@@ -420,6 +440,7 @@ gaint mbufget (void);
 void mbufrel (gaint);
 void gxmbuferr(void);
 void houtch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+void houtu8 (char*, char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
 void hout1c (gaint , gaint);
 void gxdbinit (void);
 void gxdbqfont (gaint, struct gxdbquery *);
@@ -434,20 +455,26 @@ void gxdbqpatt (gaint, struct gxdbquery *);
 void gxdbsettransclr (gaint);
 gaint gxdbqtransclr (void);
 
-/* Routines in gxchpl:
-   gxchii: Initialize character plotting
-   gxchdf: Set default font
-   gxqdf:  Return default font number
-   gxchpl: Plot character string
-   gxchln: Determine length (in plotting units) of a string
-   gxchgc: Get character info given character and font
-   gxchrd: Read in a font
+/* Routines in gxchpl: 
+   gxchii:   Initialize character plotting
+   gxchdf:   Set default font
+   gxqdf:    Return default font number
+   gxchpl:   Plot character string
+   gxchplv:  Plot vertical character string
+   gxchln:   Determine length (in plotting units) of a string
+   gxchlnv:  Determine height (in plotting units) of a vertical string
+   gxchlnvw: Determine length (in plotting units) of a vertical string
+   gxchgc:   Get character info given character and font
+   gxchrd:   Read in a font
                             */
 void  gxchii (void);
 void  gxchdf (gaint);
 gaint gxqdf (void);
 void  gxchpl (char *, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+void  gxchplv (char *, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
 gaint gxchln (char *, gaint, gadouble, gadouble *);
+gaint gxchlnv (char *, gaint, gadouble, gadouble *);
+gaint gxchlnvw (char *, gaint, gadouble, gadouble *);
 char *gxchgc (gaint, gaint, gaint *);
 gaint gxchrd (gaint);
 
@@ -566,7 +593,13 @@ void gree();
 
 /* routines in gxX.c */
 gadouble gxdch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxdchv (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxdu8 (char*, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxdu8v (char*, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
 gadouble gxdqchl (char, gaint, gadouble);
+gadouble gxdqchh (char, gaint, gadouble);
+gadouble gxdqu8l (char*, gaint, gadouble);
+gadouble gxdqu8h (char*, gaint, gadouble);
 void gxinitimg (gaint, gaint);
 void gxendimg (char *);
 void gxdsignal (gaint);

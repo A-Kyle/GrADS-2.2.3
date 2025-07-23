@@ -8,6 +8,9 @@ gxCbatch    -- Initialize an image surface in batch mode (for getting string len
 gxCbfil     -- Begin a polygon fill
 gxCbgn      -- Initialize the X interface in interactive mode
 gxCch       -- Draw a character
+gxCchv      -- Draw a character vertically
+gxCu8       -- Draw a UTF-8 symbol
+gxCu8v      -- Draw a UTF-8 symbol vertically
 gxCclip     -- Set the clipping coordinates
 gxCcol      -- Set the new color
 gxCdrw      -- Draw to
@@ -23,6 +26,7 @@ gxCmov      -- Move to
 gxCpattc    -- Create a tile pattern
 gxcpattrset -- Reset a pattern
 gxCqchl     -- Get the width of a character
+gxCqu8l     -- Get the width of a UTF-8 symbol
 gxCrec      -- Draw a filled rectangle
 gxCrsiz     -- Resize the interactive surface
 gxCselfont  -- Set the font 
@@ -41,6 +45,9 @@ void gxCbatch (gadouble , gadouble);
 void gxCbfil (void); 
 void gxCbgn (cairo_surface_t *, gadouble , gadouble, gaint, gaint);
 gadouble gxCch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxCchv (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxCu8 (char*, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+gadouble gxCu8v (char*, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
 void gxCclip (gadouble, gadouble, gadouble, gadouble);
 void gxCcol (gaint);
 void gxCdrw (gadouble, gadouble);
@@ -58,6 +65,9 @@ void gxCpattrset (gaint);
 void gxCpop (void);
 void gxCpush (void);
 gadouble gxCqchl (char, gaint, gadouble);
+gadouble gxCqchh (char, gaint, gadouble);
+gadouble gxCqu8l (char*, gaint, gadouble);
+gadouble gxCqu8h (char*, gaint, gadouble);
 void gxCrec (gadouble, gadouble, gadouble, gadouble);
 void gxCcirc (gadouble, gadouble, gadouble, gaint);
 void gxCrsiz (gaint, gaint);

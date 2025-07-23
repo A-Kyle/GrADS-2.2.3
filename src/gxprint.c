@@ -116,8 +116,20 @@ void gxpsignal (gaint sig) {
 gadouble gxpch (char ch, gaint fn, gadouble x, gadouble y, gadouble w, gadouble h, gadouble rot) { /* draw character */
   return (gxCch (ch, fn, x, y, w, h, rot));
 }
+gadouble gxpu8 (char* ch, gaint fn, gadouble x, gadouble y, gadouble w, gadouble h, gadouble rot) { /* draw UTF-8 symbol */
+  return (gxCu8 (ch, fn, x, y, w, h, rot));
+}
 gadouble gxpqchl (char ch, gaint fn, gadouble w) {  /* query character length */
  return (gxCqchl (ch, fn, w)); 
+}
+gadouble gxpqchh (char ch, gaint fn, gadouble w) {  /* query character height */
+ return (gxCqchh (ch, fn, w)); 
+}
+gadouble gxpqu8l (char* ch, gaint fn, gadouble w) {  /* query UTF-8 symbol length */
+ return (gxCqu8l (ch, fn, w)); 
+}
+gadouble gxpqu8h (char* ch, gaint fn, gadouble w) {  /* query UTF-8 symbol height */
+ return (gxCqu8h (ch, fn, w)); 
 }
 void gxpclip (gadouble x1, gadouble x2, gadouble y1, gadouble y2) {  /* set clipping area */ 
   gxCclip (x1,x2,y1,y2);

@@ -27,6 +27,7 @@ gadouble gxchplc (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble)
 gadouble gxchqlc (char, gaint, gadouble);
 void gxchplo (char *, int, gadouble, gadouble, gadouble, gadouble, gadouble);
 void houtch (char, gaint, gadouble, gadouble, gadouble, gadouble, gadouble);
+int iscbyte(char);
 
 /* local variables */
 static char *fch[10];     /* Pointers to font data once it is read in */
@@ -61,7 +62,158 @@ gaint gxqdf (void) {
 void gxchpl (char *chrs, int len, gadouble x, gadouble y, gadouble height, gadouble width, gadouble angle) {
 gadouble h,w,xoff,yoff,wact;
 gaint fn, supsub, nfn;
- 
+
+char s_utf8[5]; // c-str with up to 4 non-NT chars/bytes
+int  bval;
+char b[9];
+int i;
+int cplot; // number of plotted characters in a step for UTF-8
+
+  fn = dfont;
+  angle = angle * M_PI/180.0;    /* convert angle from degrees to radians */
+  supsub = 0;
+  
+  while (*chrs!='\0' && len>0) {
+    while (*chrs=='`') {
+      if (*(chrs+1)>='0' && *(chrs+1)<='9') {    /* get 1-digit font number */
+        fn = (gaint)*(chrs+1) - 48;
+        chrs+=2;
+        len-=2;
+      } else if (*(chrs+1)=='a') {    /* superscript */
+        supsub = 1;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='b') {    /* subscript */
+        supsub = 2;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='n') {    /* normal */
+        supsub = 0;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='f') {    /* get 2-digit font number */
+        if (len>3) {
+          nfn = 10*((gaint)*(chrs+2) - 48) + ((gaint)*(chrs+3) - 48);
+          if (nfn>=0 && nfn<100) fn = nfn;
+        }
+        chrs+=4;
+        len-=4;
+      } else break;
+    }
+
+    if (*chrs!='\0' && len>0) {
+      if (supsub) {
+        /* adjust size and position for superscripts and subscripts */
+        h = height*0.45; w = width*0.45;
+        if (supsub==1) yoff = height*0.58;
+        else yoff = -0.20*height;
+      } else {
+        h = height; w = width; yoff = 0.0;
+      }
+      xoff = yoff*sin(angle);
+      yoff = yoff*cos(angle);
+
+      wact = 0.0;
+      if (len == 1 || *chrs >= 0) { 
+        /* if this char is non-negative, */
+        /* it must be ASCII (0-127). */
+        /* plot the ASCII character */
+        wact = gxdrawch (*chrs, fn, x-xoff, y+yoff, w, h, angle);
+        if (wact < -900.0 && fn<6) {
+          /* draw instead with Hershey font */
+          wact = gxchplc (*chrs, fn, x-xoff, y+yoff, w, h, angle); 
+          if (wact < -900.0) return;
+        }
+        chrs++; len--;
+      } else {
+        /* try handling UTF-8 */
+        /* need the first 5 bits of this potential leader byte. */
+        /* convert this (negative) char to int using the signed char equivalent */
+        cplot = 0;
+        bval = (int)(*chrs) + 256;
+        for (i=7; i>=0; i--) { // convert to binary
+          b[i] = (bval % 2) ? '1' : '0';  
+          bval = bval / 2;
+        }
+
+        if (b[0] == '1' && b[1] == '1') {
+          /* this looks like a leader byte */
+          if (b[2] == '0') {
+            /* UTF-8 codepoint encoded to 2 bytes */
+            /* verify byte 2 is a continuation byte */
+            if (iscbyte(*(chrs+1))) {
+              // verified... plot it
+              snprintf(s_utf8,5,"%c%c",*(chrs),*(chrs+1));
+              wact = gxdrawu8 (s_utf8, '2', fn, x-xoff, y+yoff, w, h, angle);
+              cplot = 2;
+            }
+          } else if (b[3] == '0' && len > 2) {
+            /* encoded to 3 bytes */
+            /* verify bytes 2 & 3 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2))) {
+              // verified... plot it
+              snprintf(s_utf8,5,"%c%c%c",*(chrs),*(chrs+1),*(chrs+2));
+              wact = gxdrawu8 (s_utf8, '3', fn, x-xoff, y+yoff, w, h, angle);
+              cplot = 3;  
+            }
+          } else if (b[4] == '0' && len > 3) {
+            /* encoded to 4 bytes */
+            /* verify bytes 2-4 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2)) && iscbyte(*(chrs+3))) {
+              // verified... plot it
+              snprintf(s_utf8,5,"%c%c%c%c",*(chrs),*(chrs+1),*(chrs+2),*(chrs+3));
+              wact = gxdrawu8 (s_utf8, '4', fn, x-xoff, y+yoff, w, h, angle);
+              cplot = 4;
+            }
+          }
+        } 
+
+        if (cplot==0) {
+          /* apparently nothing was plotted, */
+          /* so it seems there was a problem detecting the UTF-8 symbol. */
+          /* treat this char as ASCII. */
+          wact = gxdrawch (*chrs, fn, x-xoff, y+yoff, w, h, angle);
+          if (wact < -900.0 && fn<6) {
+            /* draw instead with Hershey font */
+            wact = gxchplc (*chrs, fn, x-xoff, y+yoff, w, h, angle); 
+            if (wact < -900.0) return;
+          }
+          chrs++; len--;
+        } else {
+          /* a UTF-8 symbol was apparently plotted. */
+          /* update stuff... */
+          chrs += cplot;
+          len  -= cplot;
+        }
+      }
+
+      x = x + wact*cos(angle);
+      y = y + wact*sin(angle);
+
+    }
+
+  }
+}
+
+/* Plot vertical character string  */
+/* i.e.,  L 
+ *        I
+ *        K
+ *        E
+ *
+ *        T
+ *        H
+ *        I
+ *        S
+ */
+void gxchplv (char *chrs, int len, gadouble x, gadouble y, gadouble height, gadouble width, gadouble angle) {
+gadouble h,w,xoff,yoff,wact;
+gaint fn, supsub, nfn;
+
+char s_utf8[5]; // c-str with up to 4 non-NT chars/bytes
+int  bval;
+char b[9];
+int i;
+int cplot; // number of plotted characters in a step for UTF-8
+  
+  // super/subscripts might be suspect for vert typing.
   fn = dfont;
   angle = angle * M_PI/180.0;    /* convert angle from degrees to radians */
   supsub = 0;
@@ -89,9 +241,11 @@ gaint fn, supsub, nfn;
         len-=4;
       } else break;
     }
+
     if (*chrs!='\0' && len>0) {
+      // related to super/subscripts. Don't worry about this for now. 
       if (supsub) {
-	/* adjust size and position for superscripts and subscripts */
+        /* adjust size and position for superscripts and subscripts */
         h = height*0.45; w = width*0.45;
         if (supsub==1) yoff = height*0.58;
         else yoff = -0.20*height;
@@ -101,19 +255,105 @@ gaint fn, supsub, nfn;
       xoff = yoff*sin(angle);
       yoff = yoff*cos(angle);
 
-      /* plot the character */
-      wact = gxdrawch (*chrs, fn, x-xoff, y+yoff, w, h, angle);
-      if (wact < -900.0 && fn<6) {
-	/* draw with Hershey font */
-        wact = gxchplc (*chrs, fn, x-xoff, y+yoff, w, h, angle); 
-        if (wact < -900.0) return;
-      } 
-      x = x + wact*cos(angle);
-      y = y + wact*sin(angle);
 
-      chrs++; len--;
+      // this wact variable is important. For horizontal lines, it is the
+      // width of the symbol drawn. Here, we need the height of the symbol
+      // drawn for vertical lines.
+      wact = 0.0;
+      if (len == 1 || *chrs >= 0) { 
+        /* if this char is non-negative, */
+        /* it must be ASCII (0-127). */
+        /* plot the ASCII character */
+        wact = gxdrawchv (*chrs, fn, x-xoff, y+yoff, w, h, angle);
+        if (wact < -900.0 && fn<6) {
+          /* draw instead with Hershey font */
+          /* for now we will use the width to represent height */
+          /* very wrong for some chars but not important for now */
+          wact = gxchplc (*chrs, fn, x-xoff, y+yoff, w, h, angle); 
+          if (wact < -900.0) return;
+        }
+        chrs++; len--;
+      } else {
+        /* try handling UTF-8 */
+        /* need the first 5 bits of this potential leader byte. */
+        /* convert this (negative) char to int using the signed char equivalent */
+        cplot = 0;
+        bval = (int)(*chrs) + 256;
+        for (i=7; i>=0; i--) { // convert to binary
+          b[i] = (bval % 2) ? '1' : '0';  
+          bval = bval / 2;
+        }
+
+        if (b[0] == '1' && b[1] == '1') {
+          /* this looks like a leader byte. */
+          if (b[2] == '0') {
+            /* UTF-8 codepoint encoded to 2 bytes */
+            /* verify byte 2 is a continuation byte */
+            if (iscbyte(*(chrs+1))) {
+              // verified... plot it
+              snprintf(s_utf8,5,"%c%c",*(chrs),*(chrs+1));
+              wact = gxdrawu8v (s_utf8, '2', fn, x-xoff, y+yoff, w, h, angle);
+              cplot = 2;
+            }
+          } else if (b[3] == '0' && len > 2) {
+            /* encoded to 3 bytes */
+            /* verify bytes 2 & 3 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2))) {
+              // verified... plot it
+              snprintf(s_utf8,5,"%c%c%c",*(chrs),*(chrs+1),*(chrs+2));
+              wact = gxdrawu8v (s_utf8, '3', fn, x-xoff, y+yoff, w, h, angle);
+              cplot = 3;  
+            }
+          } else if (b[4] == '0' && len > 3) {
+            /* encoded to 4 bytes */
+            /* verify bytes 2-4 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2)) && iscbyte(*(chrs+3))) {
+              // verified... plot it
+              snprintf(s_utf8,5,"%c%c%c%c",*(chrs),*(chrs+1),*(chrs+2),*(chrs+3));
+              wact = gxdrawu8v (s_utf8, '4', fn, x-xoff, y+yoff, w, h, angle);
+              cplot = 4;
+            }
+          }
+        } 
+
+        if (cplot==0) {
+          /* apparently nothing was plotted, */
+          /* so it seems there was a problem detecting the UTF-8 symbol. */
+          /* treat this char as ASCII. */
+          wact = gxdrawchv (*chrs, fn, x-xoff, y+yoff, w, h, angle);
+          if (wact < -900.0 && fn<6) {
+            /* draw instead with Hershey font */
+            wact = gxchplc (*chrs, fn, x-xoff, y+yoff, w, h, angle); 
+            if (wact < -900.0) return;
+          }
+          chrs++; len--;
+        } else {
+          /* a UTF-8 symbol was apparently plotted. */
+          /* update stuff... */
+          chrs += cplot;
+          len  -= cplot;
+        }
+      }
+
+      // update plotting position based on symbol width (problems)
+      x = x + wact*sin(angle);
+      y = y - wact*cos(angle);
     }
+
   }
+}
+
+int iscbyte(char ch) {
+  int bval, i;
+  char b[9];
+
+  bval = (int)(ch) + 256;
+  for (i=7; i>=0; i--) {
+    b[i] = (bval % 2) ? '1' : '0';  
+    bval = bval / 2;
+  }
+  
+  return (b[0] == '1' && b[1] == '0') ? 1 : 0;
 }
 
 /* Get actual width of a single character in the indicated Hershey font */
@@ -180,11 +420,15 @@ char *cdat;
 }
 
 /* Determine the length of a character string without plotting it. */
-
 gaint gxchln (char *chrs, gaint len, gadouble width, gadouble *wret) {
 gadouble w,wact,cw;
 gaint fn, supsub, nfn;
- 
+char s_utf8[5]; // c-str with up to 4 non-NT chars/bytes
+int  bval;
+char b[9];
+int i;
+int cplot; // number of plotted characters in a step for UTF-8
+
   fn = dfont;
   supsub = 0;
   cw = 0;
@@ -221,18 +465,314 @@ gaint fn, supsub, nfn;
 
       /* First see if the rendering back end wants to plot this, or punt.
          If it wants to punt, we get a -999 back, so we use Hershey instead  */
-      
-      wact = gxqchl (*chrs, fn, w);
-      if (wact < -900.0) {
-	wact = gxchqlc (*chrs, fn, w); 
+      wact = 0.0;
+      if (len == 1 || *chrs >= 0) { 
+        wact = gxqchl (*chrs, fn, w);
+        if (wact < -900.0) {
+	        wact = gxchqlc (*chrs, fn, w); 
+        }
+        chrs++; len--;
+      } else {
+        /* try handling UTF-8 */
+        /* need the first 5 bits of this potential leader byte. */
+        /* convert this (negative) char to int using the signed char equivalent */
+        cplot = 0;
+        bval = (int)(*chrs) + 256;
+        for (i=7; i>=0; i--) { // convert to binary
+          b[i] = (bval % 2) ? '1' : '0';  
+          bval = bval / 2;
+        }
+
+        if (b[0] == '1' && b[1] == '1') {
+          /* this looks like a leader byte. */
+          if (b[2] == '0') {
+            /* UTF-8 codepoint encoded to 2 bytes */
+            /* verify byte 2 is a continuation byte */
+            if (iscbyte(*(chrs+1))) {
+              snprintf(s_utf8,5,"%c%c",*(chrs),*(chrs+1));
+              wact = gxqu8l (s_utf8, fn, w);
+              cplot = 2;
+            }
+          } else if (b[3] == '0' && len > 2) {
+            /* encoded to 3 bytes */
+            /* verify bytes 2 & 3 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2))) {
+              snprintf(s_utf8,5,"%c%c%c",*(chrs),*(chrs+1),*(chrs+2));
+              wact = gxqu8l (s_utf8, fn, w);
+              cplot = 3;
+            }
+          } else if (b[4] == '0' && len > 3) {
+            /* encoded to 4 bytes */
+            /* verify bytes 2-4 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2)) && iscbyte(*(chrs+3))) {
+              snprintf(s_utf8,5,"%c%c%c%c",*(chrs),*(chrs+1),*(chrs+2),*(chrs+3));
+              wact = gxqu8l (s_utf8, fn, w);
+              cplot = 4;
+            }
+          }
+        } 
+
+        if (cplot==0) {
+          /* apparently nothing was decoded, */
+          /* so it seems there was a problem detecting the UTF-8 symbol. */
+          /* treat this char as ASCII. */
+          wact = gxqchl (*chrs, fn, w);
+          if (wact < -900.0 && fn<6) {
+            // hershey
+            wact = gxchqlc (*chrs, fn, w); 
+          }
+          chrs++; len--;
+        } else {
+          /* a UTF-8 symbol was apparently plotted. */
+          /* update stuff... */
+          chrs += cplot;
+          len  -= cplot;
+        }
       }
       cw = cw + wact;
-      chrs++; len--;
     }
   }
   *wret = cw;
   return (cw);
 }
+
+/* Determine the height of a vertical character string without plotting it */
+gaint gxchlnv (char *chrs, gaint len, gadouble height, gadouble *wret) {
+gadouble w,wact,cw;
+gaint fn, supsub, nfn;
+char s_utf8[5]; // c-str with up to 4 non-NT chars/bytes
+int  bval;
+char b[9];
+int i;
+int cplot; // number of plotted characters in a step for UTF-8
+
+  fn = dfont;
+  supsub = 0;
+  cw = 0;
+  while (*chrs!='\0' && len>0) {
+    while (*chrs=='`') {
+      if (*(chrs+1)>='0' && *(chrs+1)<='9') {
+        fn = (gaint)*(chrs+1) - 48;
+        chrs+=2;
+        len-=2;
+      } else if (*(chrs+1)=='a') {
+        supsub = 1;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='b') {
+        supsub = 2;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='n') {
+        supsub = 0;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='f') {
+        if (len>3) {
+          nfn = 10*((gaint)*(chrs+2) - 48) + ((gaint)*(chrs+3) - 48);
+          if (nfn>=0 && nfn<100) fn = nfn;
+        }
+        chrs+=4;
+        len-=4;
+      } else break;
+    }
+
+    if (*chrs!='\0' && len>0) {
+      if (supsub) {
+        w = height*0.45;
+      } else {
+        w = height;
+      }
+
+      /* First see if the rendering back end wants to plot this, or punt.
+         If it wants to punt, we get a -999 back, so we use Hershey instead  */
+      wact = 0.0;
+      if (len == 1 || *chrs >= 0) { 
+        wact = gxqchh (*chrs, fn, w);
+        if (wact < -900.0) {
+	        wact = gxchqlc (*chrs, fn, w); 
+        }
+        chrs++; len--;
+      } else {
+        /* try handling UTF-8 */
+        /* need the first 5 bits of this potential leader byte. */
+        /* convert this (negative) char to int using the signed char equivalent */
+        cplot = 0;
+        bval = (int)(*chrs) + 256;
+        for (i=7; i>=0; i--) { // convert to binary
+          b[i] = (bval % 2) ? '1' : '0';  
+          bval = bval / 2;
+        }
+
+        if (b[0] == '1' && b[1] == '1') {
+          /* this looks like a leader byte. */
+          if (b[2] == '0') {
+            /* UTF-8 codepoint encoded to 2 bytes */
+            /* verify byte 2 is a continuation byte */
+            if (iscbyte(*(chrs+1))) {
+              snprintf(s_utf8,5,"%c%c",*(chrs),*(chrs+1));
+              wact = gxqu8h (s_utf8, fn, w);
+              cplot = 2;
+            }
+          } else if (b[3] == '0' && len > 2) {
+            /* encoded to 3 bytes */
+            /* verify bytes 2 & 3 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2))) {
+              snprintf(s_utf8,5,"%c%c%c",*(chrs),*(chrs+1),*(chrs+2));
+              wact = gxqu8h (s_utf8, fn, w);
+              cplot = 3;
+            }
+          } else if (b[4] == '0' && len > 3) {
+            /* encoded to 4 bytes */
+            /* verify bytes 2-4 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2)) && iscbyte(*(chrs+3))) {
+              snprintf(s_utf8,5,"%c%c%c%c",*(chrs),*(chrs+1),*(chrs+2),*(chrs+3));
+              wact = gxqu8h (s_utf8, fn, w);
+              cplot = 4;
+            }
+          }
+        } 
+
+        if (cplot==0) {
+          /* apparently nothing was decoded, */
+          /* so it seems there was a problem detecting the UTF-8 symbol. */
+          /* treat this char as ASCII. */
+          wact = gxqchh (*chrs, fn, w);
+          if (wact < -900.0 && fn<6) {
+            // hershey
+            wact = gxchqlc (*chrs, fn, w); 
+          }
+          chrs++; len--;
+        } else {
+          /* a UTF-8 symbol was apparently plotted. */
+          /* update stuff... */
+          chrs += cplot;
+          len  -= cplot;
+        }
+      }
+      cw = cw + wact;
+    }
+  }
+  *wret = cw;
+  return (cw);
+}
+
+/* Determine the width of a vertical character string without plotting it. */
+/* basically, we just check the width of every symbol in the string, */
+/* and the maximum width found is the width of the string object. */
+gaint gxchlnvw (char *chrs, gaint len, gadouble width, gadouble *wret) {
+gadouble w,wact,cw;
+gaint fn, supsub, nfn;
+char s_utf8[5]; // c-str with up to 4 non-NT chars/bytes
+int  bval;
+char b[9];
+int i;
+int cplot; // number of plotted characters in a step for UTF-8
+
+  fn = dfont;
+  supsub = 0;
+  cw = 0.0;
+  while (*chrs!='\0' && len>0) {
+    while (*chrs=='`') {
+      if (*(chrs+1)>='0' && *(chrs+1)<='9') {
+        fn = (gaint)*(chrs+1) - 48;
+        chrs+=2;
+        len-=2;
+      } else if (*(chrs+1)=='a') {
+        supsub = 1;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='b') {
+        supsub = 2;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='n') {
+        supsub = 0;
+        chrs+=2; len-=2;
+      } else if (*(chrs+1)=='f') {
+        if (len>3) {
+          nfn = 10*((gaint)*(chrs+2) - 48) + ((gaint)*(chrs+3) - 48);
+          if (nfn>=0 && nfn<100) fn = nfn;
+        }
+        chrs+=4;
+        len-=4;
+      } else break;
+    }
+    if (*chrs!='\0' && len>0) {
+      if (supsub) {
+        w = width*0.45;
+      } else {
+        w = width;
+      }
+
+      /* First see if the rendering back end wants to plot this, or punt.
+         If it wants to punt, we get a -999 back, so we use Hershey instead  */
+      wact = 0.0;
+      if (len == 1 || *chrs >= 0) { 
+        wact = gxqchl (*chrs, fn, w);
+        if (wact < -900.0) {
+	        wact = gxchqlc (*chrs, fn, w); 
+        }
+        chrs++; len--;
+      } else {
+        /* try handling UTF-8 */
+        /* need the first 5 bits of this potential leader byte. */
+        /* convert this (negative) char to int using the signed char equivalent */
+        cplot = 0;
+        bval = (int)(*chrs) + 256;
+        for (i=7; i>=0; i--) { // convert to binary
+          b[i] = (bval % 2) ? '1' : '0';  
+          bval = bval / 2;
+        }
+
+        if (b[0] == '1' && b[1] == '1') {
+          /* this looks like a leader byte. */
+          if (b[2] == '0') {
+            /* UTF-8 codepoint encoded to 2 bytes */
+            /* verify byte 2 is a continuation byte */
+            if (iscbyte(*(chrs+1))) {
+              snprintf(s_utf8,5,"%c%c",*(chrs),*(chrs+1));
+              wact = gxqu8l (s_utf8, fn, w);
+              cplot = 2;
+            }
+          } else if (b[3] == '0' && len > 2) {
+            /* encoded to 3 bytes */
+            /* verify bytes 2 & 3 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2))) {
+              snprintf(s_utf8,5,"%c%c%c",*(chrs),*(chrs+1),*(chrs+2));
+              wact = gxqu8l (s_utf8, fn, w);
+              cplot = 3;
+            }
+          } else if (b[4] == '0' && len > 3) {
+            /* encoded to 4 bytes */
+            /* verify bytes 2-4 are continuation bytes */
+            if (iscbyte(*(chrs+1)) && iscbyte(*(chrs+2)) && iscbyte(*(chrs+3))) {
+              snprintf(s_utf8,5,"%c%c%c%c",*(chrs),*(chrs+1),*(chrs+2),*(chrs+3));
+              wact = gxqu8l (s_utf8, fn, w);
+              cplot = 4;
+            }
+          }
+        } 
+
+        if (cplot==0) {
+          /* apparently nothing was decoded, */
+          /* so it seems there was a problem detecting the UTF-8 symbol. */
+          /* treat this char as ASCII. */
+          wact = gxqchl (*chrs, fn, w);
+          if (wact < -900.0 && fn<6) {
+            // hershey
+            wact = gxchqlc (*chrs, fn, w); 
+          }
+          chrs++; len--;
+        } else {
+          /* a UTF-8 symbol was apparently plotted. */
+          /* update stuff... */
+          chrs += cplot;
+          len  -= cplot;
+        }
+      }
+      if (wact > cw) cw = wact;
+    }
+  }
+  *wret = cw;
+  return (cw);
+}
+
 
 /* Get location and length of particular character info
    for particular font */

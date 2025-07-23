@@ -343,6 +343,70 @@ char *ucc;
   mbuflast->used++;
 }
 
+/* Add a single UTF-8 symbol to the metafile buffer, along with the font number (less
+   than 100), location (x,y), and size/rotation specs (4 floats).  
+   Uses -26 as a cmd value. */
+
+void houtu8 (char* ch, char len, gaint fn, gadouble x, gadouble y,
+         gadouble w, gadouble h, gadouble ang) {
+gaint rc;
+signed char *ccc;
+char *ucc;
+  if (mbuferror) return;
+  if (mbuflast->len - mbuflast->used <9) { // checking for unused part of mbuflast
+    rc = mbufget();                        // needs space to store info in buffer?
+    if (rc) {
+      gxmbuferr();
+      return;
+    }
+  }
+  
+  ccc = (signed char *)(mbuflast->buff+mbuflast->used); // end of used part of buffer
+  ucc = (char *)(ccc+2);
+  *ccc = (signed char)99;         // first byte  = 99
+  *(ccc+1) = (signed char)(-26);  // second byte = -26 (=cmd)
+  *ucc = len;                     // third byte  = len (# of bytes: '2', '3', or '4')
+  *(ccc+3) = (signed char)fn;     // fourth byte = fn (font number)
+  mbuflast->used++;
+
+  ucc = (char *)(mbuflast->buff+mbuflast->used);
+  if (len == '2') {
+    if (*ch != '\0' && *(ch+1) != '\0'){
+      *ucc      = *ch;
+      *(ucc+1)  = *(ch+1);
+    }
+  } else if (len == '3') {
+    if (*ch != '\0' && *(ch+1) != '\0' && *(ch+2) != '\0'){
+      *ucc      = *ch;
+      *(ucc+1)  = *(ch+1);
+      *(ucc+2)  = *(ch+2);
+    }
+  } else if (len == '4') {
+    if (*ch != '\0' && *(ch+1) != '\0' && *(ch+2) != '\0' && *(ch+3) != '\0'){
+      *ucc      = *ch;
+      *(ucc+1)  = *(ch+1);
+      *(ucc+2)  = *(ch+2);
+      *(ucc+3)  = *(ch+3);
+    }
+  }
+  mbuflast->used++;
+
+  *(mbuflast->buff+mbuflast->used) = (float)x;
+  mbuflast->used++;
+  
+  *(mbuflast->buff+mbuflast->used) = (float)y;
+  mbuflast->used++;
+  
+  *(mbuflast->buff+mbuflast->used) = (float)w;
+  mbuflast->used++;
+  
+  *(mbuflast->buff+mbuflast->used) = (float)h;
+  mbuflast->used++;
+  
+  *(mbuflast->buff+mbuflast->used) = (float)ang;
+  mbuflast->used++;
+}
+
 /* User has issued a clear.  
    This may also indicate the start or end of double buffering.  
    If we are not double buffering, just free up the memory buffer and return.  
@@ -425,6 +489,7 @@ gadouble *xybuf;
 gaint ppp,cmd,op1,op2,op3,op4,op5,fflag,xyc=0,fn,sig;
 signed char *ch;
 char ccc,*uch;
+char s_utf8[5];
 
   if (dbflg && !dbmode) {
     printf ("Logic error 0 in Redraw.  Contact Developer.\n");
@@ -706,6 +771,43 @@ char ccc,*uch;
 	else
 	  dsubs->gxdcirc(x,y,r,0);          /* for hardware */
         ppp += 3;
+      }
+      
+      /* -26 is for drawing a single UTF-8 symbol in the indicated font and size */
+      
+      else if (cmd==-26){
+        ch  = (signed char *)(pmbuf->buff + ppp - 1);
+        uch =        (char *)(pmbuf->buff + ppp - 1);
+        ccc = *(uch+2);         // third byte...  symbol len (# of bytes)
+        fn  = (gaint)(*(ch+3)); // fourth byte... font number
+      
+        // before we get the symbol specs, we need the chars
+        // that make it up!
+        uch = (char *)(pmbuf->buff + ppp);
+        if (ccc == '2') {
+          snprintf(s_utf8,5,"%c%c",*(uch),*(uch+1));
+        } else if (ccc == '3') {
+          snprintf(s_utf8,5,"%c%c%c",*(uch),*(uch+1),*(uch+2));
+        } else if (ccc == '4') {
+          snprintf(s_utf8,5,"%c%c%c%c",*(uch),*(uch+1),*(uch+2),*(uch+3));
+        } else {
+          snprintf(s_utf8,5,"%c",'F');
+        }
+       
+        // get symbol specs
+        buff = pmbuf->buff + ppp + 1;
+        x = (gadouble)(*buff);
+        y = (gadouble)(*(buff+1));
+        w = (gadouble)(*(buff+2));
+        h = (gadouble)(*(buff+3));
+        ang = (gadouble)(*(buff+4));
+        
+        if (pflg) 
+          r = psubs->gxpu8 (s_utf8,fn,x,y,w,h,ang);     /* print a symbol */
+        else 
+          r = dsubs->gxdu8 (s_utf8,fn,x,y,w,h,ang);     /* draw a symbol */
+        
+        ppp += 6;
       }
 
       /* Any other command would be invalid */

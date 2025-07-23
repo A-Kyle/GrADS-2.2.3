@@ -3092,7 +3092,25 @@ int i,j,col;
 gadouble gxdch (char ch, gaint fn, gadouble x, gadouble y, gadouble w, gadouble h, gadouble rot) {
   return (-999); 
 }
+gadouble gxdu8 (char* ustr, gaint fn, gadouble x, gadouble y, gadouble w, gadouble h, gadouble rot) {
+  return (-999); 
+}
+gadouble gxdchv (char ch, gaint fn, gadouble x, gadouble y, gadouble w, gadouble h, gadouble rot) {
+  return (-999); 
+}
+gadouble gxdu8v (char* ustr, gaint fn, gadouble x, gadouble y, gadouble w, gadouble h, gadouble rot) {
+  return (-999); 
+}
 gadouble gxdqchl (char ch, gaint fn, gadouble w) {
+  return (-999); 
+}
+gadouble gxdqchh (char ch, gaint fn, gadouble w) {
+  return (-999); 
+}
+gadouble gxdqu8l (char* ch, gaint fn, gadouble w) {
+  return (-999); 
+}
+gadouble gxdqu8h (char* ch, gaint fn, gadouble w) {
   return (-999); 
 }
 void gxdopt (gaint opt) {
