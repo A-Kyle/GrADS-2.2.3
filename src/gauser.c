@@ -4181,20 +4181,29 @@ gadouble minvals[4], maxvals[4],dval;
   }
   
   else if (cmpwrd(arg,"parea")) {
-    gadouble axmn, axmx, aymn, aymx;
-    axmn = -9999.9;
-    axmx = -9999.9;
-    aymn = -9999.9;
-    aymx = -9999.9;
-    gamscltest(pcm, &axmn, &axmx, &aymn, &aymx);
     snprintf(pout,1255,"Set X Limits = %g to %g\n",pcm->pxmin,pcm->pxmax);
     gaprnt(2,pout);
     snprintf(pout,1255,"Set Y Limits = %g to %g\n",pcm->pymin,pcm->pymax);
     gaprnt(2,pout);
-    snprintf(pout,1255,"Effective X Limits = %g to %g\n",axmn,axmx);
-    gaprnt(2,pout);
-    snprintf(pout,1255,"Effective Y Limits = %g to %g\n",aymn,aymx);
-    gaprnt(2,pout);
+    
+    // do a test map-projection setup only if X and Y dims vary
+    if (pcm->dmin[0]!=pcm->dmax[0] && pcm->dmin[1]!=pcm->dmax[1]) {
+      gadouble axmn, axmx, aymn, aymx;
+      axmn = -9999.9;
+      axmx = -9999.9;
+      aymn = -9999.9;
+      aymx = -9999.9;
+      gamscltest(pcm, &axmn, &axmx, &aymn, &aymx);
+      snprintf(pout,1255,"Effective X Limits = %g to %g\n",axmn,axmx);
+      gaprnt(2,pout);
+      snprintf(pout,1255,"Effective Y Limits = %g to %g\n",aymn,aymx);
+      gaprnt(2,pout);
+    } else {
+      snprintf(pout,1255,"Effective X Limits = %g to %g\n",pcm->pxmin,pcm->pxmax);
+      gaprnt(2,pout);
+      snprintf(pout,1255,"Effective Y Limits = %g to %g\n",pcm->pymin,pcm->pymax);
+      gaprnt(2,pout);
+    }
     snprintf(pout,1255,"Mproj = %d\n",pcm->mproj);
     gaprnt(2,pout);
   }
