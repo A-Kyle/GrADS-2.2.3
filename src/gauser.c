@@ -2896,8 +2896,9 @@ gadouble minvals[4], maxvals[4],dval;
     gaprnt (2,"  q files    Lists all open files\n");
     gaprnt (2,"  q font     Returns info about a particular font \n");
     gaprnt (2,"  q fwrite   Returns status of fwrite output file\n");
-    gaprnt (2,"  q gxinfo   Returns graphics environment info\n");
+    gaprnt (2,"  q gxinfo   Returns last-rendered graphics environment info\n");
     gaprnt (2,"  q gxout    Gives current gxout settings\n");
+    gaprnt (2,"  q parea    Returns set and effective plotting-area info\n");
     gaprnt (2,"  q pos      Waits for mouse click, returns position and widget info\n");
     gaprnt (2,"  q sdfwrite Returns status of self-describing fwrite options\n");
     gaprnt (2,"  q shades   Returns colors and levels of shaded contours\n");
@@ -4174,6 +4175,25 @@ gadouble minvals[4], maxvals[4],dval;
     gaprnt(2,pout);
     snprintf(pout,1255,"Xaxis = %s  Yaxis = %s\n",cdims[pcm->xdim+1],
                   cdims[pcm->ydim+1]);
+    gaprnt(2,pout);
+    snprintf(pout,1255,"Mproj = %d\n",pcm->mproj);
+    gaprnt(2,pout);
+  }
+  
+  else if (cmpwrd(arg,"parea")) {
+    gadouble axmn, axmx, aymn, aymx;
+    axmn = -9999.9;
+    axmx = -9999.9;
+    aymn = -9999.9;
+    aymx = -9999.9;
+    gamscltest(pcm, &axmn, &axmx, &aymn, &aymx);
+    snprintf(pout,1255,"Set X Limits = %g to %g\n",pcm->pxmin,pcm->pxmax);
+    gaprnt(2,pout);
+    snprintf(pout,1255,"Set Y Limits = %g to %g\n",pcm->pymin,pcm->pymax);
+    gaprnt(2,pout);
+    snprintf(pout,1255,"Effective X Limits = %g to %g\n",axmn,axmx);
+    gaprnt(2,pout);
+    snprintf(pout,1255,"Effective Y Limits = %g to %g\n",aymn,aymx);
     gaprnt(2,pout);
     snprintf(pout,1255,"Mproj = %d\n",pcm->mproj);
     gaprnt(2,pout);

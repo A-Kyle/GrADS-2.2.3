@@ -6000,28 +6000,28 @@ gaint rc=0, flag;
   }
   flag = 0;
   if (pcm->mproj==3) {
-    rc = gxnste (&mpj);
+    rc = gxnste (&mpj, 1);
     if (rc) {
       gaprnt (0,"Map Projection Error:  Invalid coords for NPS\n");
       gaprnt (0,"  Will use linear lat-lon projection\n");
       flag = 1;
     }
   } else if (pcm->mproj==4) {
-    rc = gxsste (&mpj);
+    rc = gxsste (&mpj, 1);
     if (rc) {
       gaprnt (0,"Map Projection Error:  Invalid coords for SPS\n");
       gaprnt (0,"  Will use linear lat-lon projection\n");
       flag = 1;
     }
   } else if (pcm->mproj==5) {
-    rc = gxrobi (&mpj);
+    rc = gxrobi (&mpj, 1);
     if (rc) {
       gaprnt (0,"Map Projection Error:  Invalid coords for Robinson\n");
       gaprnt (0,"  Will use linear lat-lon projection\n");
       flag = 1;
     }
   } else if (pcm->mproj==6) {
-    rc = gxmoll (&mpj);
+    rc = gxmoll (&mpj, 1);
     if (rc) {
       gaprnt (0,"Map Projection Error:  Invalid coords for Mollweide\n");
       gaprnt (0,"  Will use linear lat-lon projection\n");
@@ -6032,14 +6032,14 @@ gaint rc=0, flag;
       mpj.axmn = pcm->mpvals[0]; mpj.axmx = pcm->mpvals[1];
       mpj.aymn = pcm->mpvals[2]; mpj.aymx = pcm->mpvals[3];
     } else mpj.axmn = -999.9;
-    rc = gxortg (&mpj);
+    rc = gxortg (&mpj, 1);
     if (rc) {
       gaprnt (0,"Map Projection Error:  Invalid coords for Orthographic Projection\n");
       gaprnt (0,"  Will use linear lat-lon projection\n");
       flag = 1;
     }
   } else if (pcm->mproj==13) {
-    rc = gxlamc (&mpj);
+    rc = gxlamc (&mpj, 1);
     if (rc) {
       gaprnt (0,"Map Projection Error:  Invalid coords for Lambert conformal Projection\n");
       gaprnt (0,"  Will use linear lat-lon projection\n");
@@ -6047,17 +6047,74 @@ gaint rc=0, flag;
     }
   }
 
-  if (pcm->mproj==2 || flag) rc = gxltln (&mpj);
-  else if (pcm->mproj<2) rc = gxscld (&mpj, pcm->xflip, pcm->yflip);
+  if (pcm->mproj==2 || flag) rc = gxltln (&mpj, 1);
+  else if (pcm->mproj<2) rc = gxscld (&mpj, pcm->xflip, pcm->yflip, 1);
   if (rc) {
     gaprnt (0,"Map Projection Error:  Internal Logic check\n");
     return;
   };
-
+  
   pcm->xsiz1 = mpj.axmn;
   pcm->xsiz2 = mpj.axmx;
   pcm->ysiz1 = mpj.aymn;
   pcm->ysiz2 = mpj.aymx;
+}
+
+/* Test map projection scaling without propagating any changes */
+void gamscltest (struct gacmn *pcm, 
+                  gadouble *axmn, gadouble *axmx, gadouble *aymn, gadouble *aymx) {
+gaint rc=0, flag;
+
+  if (pcm->paflg) {
+    mpj.xmn = pcm->pxmin;
+    mpj.xmx = pcm->pxmax;
+    mpj.ymn = pcm->pymin;
+    mpj.ymx = pcm->pymax;
+  } else {
+    mpj.xmn = 0.5;
+    mpj.xmx = pcm->xsiz - 0.5;
+    mpj.ymn = 0.75;
+    mpj.ymx = pcm->ysiz - 0.75;
+  }
+  if (pcm->mpflg==4 && pcm->mproj>2 && pcm->mproj!=7) {
+    mpj.lnmn = pcm->mpvals[0]; mpj.lnmx = pcm->mpvals[1];
+    mpj.ltmn = pcm->mpvals[2]; mpj.ltmx = pcm->mpvals[3];
+  } else {
+    mpj.lnmn = pcm->dmin[0]; mpj.lnmx = pcm->dmax[0];
+    mpj.ltmn = pcm->dmin[1]; mpj.ltmx = pcm->dmax[1];
+  }
+  flag = 0;
+  if (pcm->mproj==3) {
+    rc = gxnste (&mpj, 0);
+    if (rc) flag = 1;
+  } else if (pcm->mproj==4) {
+    rc = gxsste (&mpj, 0);
+    if (rc) flag = 1;
+  } else if (pcm->mproj==5) {
+    rc = gxrobi (&mpj, 0);
+    if (rc) flag = 1;
+  } else if (pcm->mproj==6) {
+    rc = gxmoll (&mpj, 0);
+    if (rc) flag = 1;
+  } else if (pcm->mproj==7) {
+    if (pcm->mpflg==4) {
+      mpj.axmn = pcm->mpvals[0]; mpj.axmx = pcm->mpvals[1];
+      mpj.aymn = pcm->mpvals[2]; mpj.aymx = pcm->mpvals[3];
+    } else mpj.axmn = -999.9;
+    rc = gxortg (&mpj, 0);
+    if (rc) flag = 1;
+  } else if (pcm->mproj==13) {
+    rc = gxlamc (&mpj, 0);
+    if (rc) flag = 1;
+  }
+
+  if (pcm->mproj==2 || flag) rc = gxltln (&mpj, 0);
+  else if (pcm->mproj<2) rc = gxscld (&mpj, pcm->xflip, pcm->yflip, 0);
+  if (rc) return;
+  *axmn = mpj.axmn;
+  *axmx = mpj.axmx;
+  *aymn = mpj.aymn;
+  *aymx = mpj.aymx;
 }
 
 /* Plot map with proper data set, line style, etc. */

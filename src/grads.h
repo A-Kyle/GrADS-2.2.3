@@ -1086,6 +1086,7 @@ void gastnwrt (struct gacmn *);
 void gaarrw (gadouble, gadouble, gadouble, gadouble, gadouble);
 void gaplvl (struct gacmn *);
 void gamscl (struct gacmn *);
+void gamscltest (struct gacmn *, gadouble *, gadouble *, gadouble *, gadouble *);
 void gawmap (struct gacmn *, gaint);
 void gacsel (gadouble, gadouble, gadouble *, gadouble *, gadouble *);
 void gaaxis (gaint, struct gacmn *, gaint);

@@ -279,7 +279,7 @@ char hdr[3],rec[1530];
 /* Routine to set up scaling for lat-lon projection.  The aspect
    ratio is *not* maintained.                                   */
 
-int gxscld (struct mapprj *mpj, int xflip, int yflip) {
+int gxscld (struct mapprj *mpj, int xflip, int yflip, const int applychg) {
 float x1,x2,y1,y2;
 
   if (mpj->lnmn>=mpj->lnmx) return(1);
@@ -293,9 +293,11 @@ float x1,x2,y1,y2;
   x1 = mpj->lnmn; x2 = mpj->lnmx; y1 = mpj->ltmn; y2 = mpj->ltmx;
   if (xflip) { x1 = mpj->lnmx; x2 = mpj->lnmn; }
   if (yflip) { y1 = mpj->ltmx; y2 = mpj->ltmn; }
-  gxscal (mpj->axmn, mpj->axmx, mpj->aymn, mpj->aymx, x1, x2, y1, y2);
-  gxproj (NULL);
-  adjtyp = 0;
+  if (applychg) {
+    gxscal (mpj->axmn, mpj->axmx, mpj->aymn, mpj->aymx, x1, x2, y1, y2);
+    gxproj (NULL);
+    adjtyp = 0;
+  }
   return (0);
 }
 
@@ -303,7 +305,7 @@ float x1,x2,y1,y2;
    ratio of the projection is maintained as a constant, and it
    fills the plotting area as much as possible.                 */
 
-int gxltln (struct mapprj *mpj) {
+int gxltln (struct mapprj *mpj, const int applychg) {
 float lndif,ltdif,aspect,aspect2,xdif,xlo,xhi,ydif,ylo,yhi;
 
   if (mpj->lnmn>=mpj->lnmx) return(1);
@@ -333,10 +335,12 @@ float lndif,ltdif,aspect,aspect2,xdif,xlo,xhi,ydif,ylo,yhi;
     mpj->axmx = mpj->xmx;
   }
 
-  gxscal (mpj->axmn, mpj->axmx, mpj->aymn, mpj->aymx,
-          mpj->lnmn, mpj->lnmx, mpj->ltmn, mpj->ltmx);
-  gxproj (NULL);
-  adjtyp = 0;
+  if (applychg) {
+    gxscal (mpj->axmn, mpj->axmx, mpj->aymn, mpj->aymx,
+            mpj->lnmn, mpj->lnmx, mpj->ltmn, mpj->ltmx);
+    gxproj (NULL);
+    adjtyp = 0;
+  }
   return (0);
 }
 
@@ -347,7 +351,7 @@ float lndif,ltdif,aspect,aspect2,xdif,xlo,xhi,ydif,ylo,yhi;
 
 static float londif;
 
-int gxnste (struct mapprj *mpj) {
+int gxnste (struct mapprj *mpj, const int applychg) {
 gadouble x1,x2,y1,y2,dum,lonave;
 gadouble w1,xave,yave;
 gadouble lonmn, lonmx, latmn, latmx, xmin, xmax, ymin, ymax;
@@ -398,20 +402,22 @@ gadouble lonmn, lonmx, latmn, latmx, xmin, xmax, ymin, ymax;
   if ( ((xmax-xmin)/(ymax-ymin)) > ((x2-x1)/(y2-y1)) ) {
     w1 = 0.5*(ymax-ymin)*(x2-x1)/(y2-y1);
     xave = (xmax+xmin)/2.0;
-    gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
+    if (applychg) gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
     mpj->axmn = xave-w1;  mpj->axmx = xave+w1;
     mpj->aymn = ymin;  mpj->aymx = ymax;
   } else {
     w1 = 0.5*(xmax-xmin)*(y2-y1)/(x2-x1);
     yave = (ymax+ymin)/2.0;
-    gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+    if (applychg) gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
     mpj->axmn = xmin;  mpj->axmx = xmax;
     mpj->aymn = yave-w1;  mpj->aymx = yave+w1;
   }
 
-  gxproj (gxnpst);
-  gxback (gxnrev);
-  adjtyp = 1;
+  if (applychg) {
+    gxproj (gxnpst);
+    gxback (gxnrev);
+    adjtyp = 1;
+  }
   return (0);
 
 }
@@ -447,7 +453,7 @@ gadouble rad,alpha;
    aspect to this is to set the level 1 linear scaling such that
    the proper aspect ratio is maintained.   */
 
-int gxsste (struct mapprj *mpj) {
+int gxsste (struct mapprj *mpj, const int applychg) {
 gadouble x1,x2,y1,y2,dum,lonave;
 gadouble w1,xave,yave;
 gadouble lonmn, lonmx, latmn, latmx, xmin, xmax, ymin, ymax;
@@ -498,19 +504,21 @@ gadouble lonmn, lonmx, latmn, latmx, xmin, xmax, ymin, ymax;
   if ( ((xmax-xmin)/(ymax-ymin)) > ((x2-x1)/(y2-y1)) ) {
     w1 = 0.5*(ymax-ymin)*(x2-x1)/(y2-y1);
     xave = (xmax+xmin)/2.0;
-    gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
+    if (applychg) gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
     mpj->axmn = xave-w1;  mpj->axmx = xave+w1;
     mpj->aymn = ymin;  mpj->aymx = ymax;
   } else {
     w1 = 0.5*(xmax-xmin)*(y2-y1)/(x2-x1);
     yave = (ymax+ymin)/2.0;
-    gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+    if (applychg) gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
     mpj->axmn = xmin;  mpj->axmx = xmax;
     mpj->aymn = yave-w1;  mpj->aymx = yave+w1;
   }
-  gxproj (gxspst);
-  gxback (gxsrev);
-  adjtyp = 2;
+  if (applychg) {
+    gxproj (gxspst);
+    gxback (gxsrev);
+    adjtyp = 2;
+  }
   return (0);
 
 }
@@ -585,7 +593,7 @@ gadouble xx1,yy1,xx2,yy2,dir;
 
 static gadouble fudge;
 
-int gxrobi (struct mapprj *mpj) {
+int gxrobi (struct mapprj *mpj, const int applychg) {
 gadouble lonmn, lonmx, latmn, latmx, xmin, xmax, ymin, ymax;
 gadouble x1,x2,y1,y2,xd,yd,xave,yave,w1;
 
@@ -627,20 +635,22 @@ gadouble x1,x2,y1,y2,xd,yd,xave,yave,w1;
   if ( ((xmax-xmin)/(ymax-ymin)) > ((x2-x1)/(y2-y1)) ) {
     w1 = 0.5*(ymax-ymin)*(x2-x1)/(y2-y1);
     xave = (xmax+xmin)/2.0;
-    gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
+    if (applychg) gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
     mpj->axmn = xave-w1;  mpj->axmx = xave+w1;
     mpj->aymn = ymin;  mpj->aymx = ymax;
   } else {
     w1 = 0.5*(xmax-xmin)*(y2-y1)/(x2-x1);
     yave = (ymax+ymin)/2.0;
-    gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+    if (applychg) gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
     mpj->axmn = xmin;  mpj->axmx = xmax;
     mpj->aymn = yave-w1;  mpj->aymx = yave+w1;
   }
 
-  gxproj (gxrobp);
-  gxback (gxrobb);
-  adjtyp = 4;
+  if (applychg) {
+    gxproj (gxrobp);
+    gxback (gxrobb);
+    adjtyp = 4;
+  }
   return (0);
 }
 
@@ -687,7 +697,7 @@ void gxrobb (gadouble x, gadouble y, gadouble *rlon, gadouble *rlat) {
      10.08.95   Karin Meier (karin.meier@dkrz.de)
   ------------------------------------------------------------------*/
 
-int gxmoll (struct mapprj *mpj) {
+int gxmoll (struct mapprj *mpj, const int applychg) {
     gadouble lonmn, lonmx, latmn, latmx, xmin, xmax, ymin, ymax;
     gadouble x1,x2,y1,y2,xd,yd,xave,yave,w1;
 
@@ -728,22 +738,23 @@ int gxmoll (struct mapprj *mpj) {
 
   	if ( ((xmax-xmin)/(ymax-ymin)) > ((x2-x1)/(y2-y1)) ) {
   	  w1 = 0.5*(ymax-ymin)*(x2-x1)/(y2-y1);
- 	  xave = (xmax+xmin)/2.0;
-  	  gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
+      xave = (xmax+xmin)/2.0;
+  	  if (applychg) gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
   	  mpj->axmn = xave-w1;  mpj->axmx = xave+w1;
   	  mpj->aymn = ymin;     mpj->aymx = ymax;
   	} else {
   	  w1 = 0.5*(xmax-xmin)*(y2-y1)/(x2-x1);
-	  yave = (ymax+ymin)/2.0;
-  	  gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+      yave = (ymax+ymin)/2.0;
+  	  if (applychg) gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
   	  mpj->axmn = xmin;     mpj->axmx = xmax;
   	  mpj->aymn = yave-w1;  mpj->aymx = yave+w1;
   	}
-
-  	gxproj (gxmollp);
-  	gxback (gxmollb);
-  	adjtyp = 4;
-  	return (0);
+    if (applychg) {
+      gxproj (gxmollp);
+      gxback (gxmollb);
+      adjtyp = 4;
+  	}
+    return (0);
 }
 
 void gxmollp (gadouble rlon, gadouble rlat, gadouble *x, gadouble *y) {
@@ -776,7 +787,7 @@ void gxmollb (gadouble x, gadouble y, gadouble *rlon, gadouble *rlat) {
 /* A secret mpvals mod, where the area can be clipped by x1,y1,x2,y2 where the
    values are in the range of -1 to 1 */
 
-int gxortg (struct mapprj *mpj) {
+int gxortg (struct mapprj *mpj, const int applychg) {
     gadouble lonmn, lonmx, latmn, latmx, xmin, xmax, ymin, ymax;
     gadouble x1,x2,y1,y2,xd,yd,xave,yave,w1;
     gadouble xlmn, xlmx, ylmn, ylmx;
@@ -791,13 +802,13 @@ int gxortg (struct mapprj *mpj) {
 	lomin  = lonmn;     lomax = lonmx;
 	lamin  = latmn;     lamax = latmx;
 	lonref = (lonmx+lonmn)/2.0;
-        if (mpj->axmn > -999.0) {
-          xlmn = mpj->axmn; xlmx = mpj->axmx;
-          ylmn = mpj->aymn; ylmx = mpj->aymx;
-          if (xlmn >= -1.0 && xlmn <= 1.0 && xlmx >= -1.0 && xlmx <= 1.0 &&
-              ylmn >= -1.0 && ylmn <= 1.0 && ylmx >= -1.0 && ylmx <= 1.0 &&
-              ylmx > ylmn && xlmx > xlmn) lflg = 1;
-        }
+  if (mpj->axmn > -999.0) {
+    xlmn = mpj->axmn; xlmx = mpj->axmx;
+    ylmn = mpj->aymn; ylmx = mpj->aymx;
+    if (xlmn >= -1.0 && xlmn <= 1.0 && xlmx >= -1.0 && xlmx <= 1.0 &&
+        ylmn >= -1.0 && ylmn <= 1.0 && ylmx >= -1.0 && ylmx <= 1.0 &&
+        ylmx > ylmn && xlmx > xlmn) lflg = 1;
+  }
 
   /* Check boundaries */
 
@@ -815,7 +826,7 @@ int gxortg (struct mapprj *mpj) {
 		   lonmx, lonmn);
 	   return (1);
 	}
-  	if (latmn>=latmx||lonmn>=lonmx||xmin>=xmax||ymin>=ymax) return(1);
+  if (latmn>=latmx||lonmn>=lonmx||xmin>=xmax||ymin>=ymax) return(1);
 
 	if (lonmn < -180.0) {
 	    mpj->lnmn = lonmn + 360.0;
@@ -830,45 +841,46 @@ int gxortg (struct mapprj *mpj) {
 
   /* Get bounds of the map in linear units */
 
-	  gxortgp ( lonmn,  latmn, &x1, &y1);
-	  gxortgp ( lonmn,  latmx, &xd, &y2);
-	  if (xd<x1) x1 = xd;
-	  if (latmn<0.0 && latmx>0.0) {
-  	     gxortgp ( lonmn, 0.0, &xd, &yd);
-	     if (xd<x1)	x1 = xd;
-  	  }
-	  gxortgp ( lonmx,  latmn, &x2, &y1);
-	  gxortgp ( lonmx,  latmx, &xd, &y2);
-	  if(xd>x2) x2 = xd;
-	  if (latmn<0.0 && latmx>0.0) {
-	     gxortgp ( lonmx, 0.0, &xd, &yd);
-	     if (xd>x2) x2 = xd;
-	  }
+  gxortgp ( lonmn,  latmn, &x1, &y1);
+  gxortgp ( lonmn,  latmx, &xd, &y2);
+  if (xd<x1) x1 = xd;
+  if (latmn<0.0 && latmx>0.0) {
+     gxortgp ( lonmn, 0.0, &xd, &yd);
+     if (xd<x1)	x1 = xd;
+  }
+  gxortgp ( lonmx,  latmn, &x2, &y1);
+  gxortgp ( lonmx,  latmx, &xd, &y2);
+  if(xd>x2) x2 = xd;
+  if (latmn<0.0 && latmx>0.0) {
+     gxortgp ( lonmx, 0.0, &xd, &yd);
+     if (xd>x2) x2 = xd;
+  }
          
-         if (lflg) {
-           x1 = xlmn; x2 = xlmx; y1 = ylmn; y2 = ylmx;
-         }
+  if (lflg) {
+   x1 = xlmn; x2 = xlmx; y1 = ylmn; y2 = ylmx;
+  }
 
   /* Set up linear level scaling while maintaining aspect ratio.   */
 
-  	if ( ((xmax-xmin)/(ymax-ymin)) > ((x2-x1)/(y2-y1)) ) {
-  	  w1 = 0.5*(ymax-ymin)*(x2-x1)/(y2-y1);
- 	  xave = (xmax+xmin)/2.0;
-  	  gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
-  	  mpj->axmn = xave-w1;  mpj->axmx = xave+w1;
-  	  mpj->aymn = ymin;     mpj->aymx = ymax;
-  	} else {
-  	  w1 = 0.5*(xmax-xmin)*(y2-y1)/(x2-x1);
-	  yave = (ymax+ymin)/2.0;
-  	  gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
-  	  mpj->axmn = xmin;     mpj->axmx = xmax;
-  	  mpj->aymn = yave-w1;  mpj->aymx = yave+w1;
-  	}
-
-  	gxproj (gxortgp);
-  	gxback (gxortgb);
-  	adjtyp = 4;
-  	return (0);
+  if ( ((xmax-xmin)/(ymax-ymin)) > ((x2-x1)/(y2-y1)) ) {
+    w1 = 0.5*(ymax-ymin)*(x2-x1)/(y2-y1);
+    xave = (xmax+xmin)/2.0;
+    if (applychg) gxscal ( xave-w1, xave+w1, ymin, ymax, x1, x2, y1, y2 );
+    mpj->axmn = xave-w1;  mpj->axmx = xave+w1;
+    mpj->aymn = ymin;     mpj->aymx = ymax;
+  } else {
+    w1 = 0.5*(xmax-xmin)*(y2-y1)/(x2-x1);
+    yave = (ymax+ymin)/2.0;
+    if (applychg) gxscal ( xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+    mpj->axmn = xmin;     mpj->axmx = xmax;
+    mpj->aymn = yave-w1;  mpj->aymx = yave+w1;
+  }
+  if (applychg) {
+    gxproj (gxortgp);
+    gxback (gxortgb);
+    adjtyp = 4;
+  }
+  return (0);
 }
 
 void gxortgp (gadouble rlon, gadouble rlat, gadouble *x, gadouble *y) {
@@ -903,7 +915,7 @@ void gxortgb (gadouble x, gadouble y, gadouble *rlon, gadouble *rlat) {
   ------------------------------------------------------------------*/
 static gadouble  hemi, r;
 
-int gxlamc (struct mapprj *mpj) {
+int gxlamc (struct mapprj *mpj, const int applychg) {
   gadouble  lonmn, lonmx, latmn, latmx, dlat, dlon, dx, dy;
   gadouble  xave,yave, w1, lonave, xmin, xmax, ymin, ymax, x1, x2, y1, y2, xd, yd;
 
@@ -917,12 +929,12 @@ int gxlamc (struct mapprj *mpj) {
 	dlat   = lamax - lamin;	     dlon  = lomax - lomin;
 	dx     = xmax - xmin;	     dy    = ymax - ymin;
 
-  	if ((lonmn>=lonmx)||(latmn>=latmx)||(xmin>=xmax)||(ymin>=ymax)) {
-	   return(1);
-  	}
+  if ((lonmn>=lonmx)||(latmn>=latmx)||(xmin>=xmax)||(ymin>=ymax)) {
+    return(1);
+  }
 	if (((latmn > 0.0) && (latmx < 0.0)) || ((latmn < 0.0) && (latmx >0.0))) {
-	   printf("Map Projection Error:  Latitude must be in range -90 0 or 0 90\n");
-	   return (1);
+    printf("Map Projection Error:  Latitude must be in range -90 0 or 0 90\n");
+    return (1);
 	}
 
 /*--- set constant for northern or southern hemisphere  ---*/
@@ -969,78 +981,77 @@ int gxlamc (struct mapprj *mpj) {
  	if ( ((xmax-xmin)/(ymax-ymin)) > ((x2-x1)/(y2-y1)) )
 	{
 	  if (hemi==-1.0 && 180.0<(lomax-lomin) && (lomax-lomin)<=270.0)
-		yave -= 1.5;
+      yave -= 1.5;
 	  else if (hemi==1.0 && 180.0<(lomax-lomin) && (lomax-lomin)<=270.0)
-		yave += 1.5;
+      yave += 1.5;
 	  else if (hemi==-1.0 && 270.0<=(lomax-lomin) && (lomax-lomin)<=360.0)
-		yave -= 1.2;
+      yave -= 1.2;
 	  else if (hemi==1.0 && 270.0<=(lomax-lomin) && (lomax-lomin)<=360.0)
-		yave += 1.2;
+      yave += 1.2;
 	  else if (hemi==-1.0 && 90.0<(lomax-lomin) && (lomax-lomin)<=180.0)
-		yave -= 0.5;
+      yave -= 0.5;
 	  else if (hemi==1.0 && 90.0<(lomax-lomin) && (lomax-lomin)<=180.0)
-		yave += 1.0;
+      yave += 1.0;
 	  else if (hemi==-1.0 && (lomax-lomin)<=90.0)
-		yave += 0.0;
+      yave += 0.0;
 	  else if (hemi==1.0 && (lomax-lomin)<=90.0)
-		yave += 1.0;
+      yave += 1.0;
 
-  	 w1 = 0.5*(ymax-ymin)*(x2-x1)/(y2-y1);
-	  if (w1 < 1.0)
-		gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
-	  else if (w1 < 2.0)
-		gxscal (xave-0.5*(w1), xave+0.5*w1, yave-w1, yave+w1,
-			x1, x2, y1, y2 );
-	  else if (w1 < 3.0)
-		gxscal (xave-0.5*w1, xave+0.5*w1, yave-w1, yave+w1,
-			x1, x2, y1, y2 );
-	  else if (w1 > 3.0)
-		gxscal (xave-0.75*w1, xave+0.75*w1, yave-0.75*w1,
-			yave+0.75*w1, x1, x2, y1, y2 );
-	  else
-  	  	gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
-	}
-	else
-	{
+  	w1 = 0.5*(ymax-ymin)*(x2-x1)/(y2-y1);
+	  if (applychg) {
+      if (w1 < 1.0) 
+        gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+      else if (w1 < 2.0) 
+        gxscal (xave-0.5*(w1), xave+0.5*w1, yave-w1, yave+w1, x1, x2, y1, y2 );
+      else if (w1 < 3.0) 
+        gxscal (xave-0.5*w1, xave+0.5*w1, yave-w1, yave+w1, x1, x2, y1, y2 );
+      else if (w1 > 3.0) 
+        gxscal (xave-0.75*w1, xave+0.75*w1, yave-0.75*w1, yave+0.75*w1, x1, x2, y1, y2 );
+      else 
+        gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+    }
+	} else {
 	  if (hemi==-1.0 && 180.0<(lomax-lomin) && (lomax-lomin)<=270.0)
-		yave -= 1.0;
+      yave -= 1.0;
 	  else if (hemi==1.0 && 180.0<(lomax-lomin) && (lomax-lomin)<=270.0)
-		yave += 1.5;
+      yave += 1.5;
 	  else if (hemi==-1.0 && 270.0<=(lomax-lomin) && (lomax-lomin)<=360.0)
-		yave -= 1.0;
+      yave -= 1.0;
 	  else if (hemi==1.0 && 270.0<=(lomax-lomin) && (lomax-lomin)<=360.0)
-		yave += 1.0;
+      yave += 1.0;
 	  else if (hemi==-1.0 && 90.0<(lomax-lomin) && (lomax-lomin)<=180.0)
-		yave -= 0.5;
+      yave -= 0.5;
 	  else if (hemi==1.0 && 90.0<(lomax-lomin) && (lomax-lomin)<=180.0)
-		yave += 1.0;
+      yave += 1.0;
 	  else if (hemi==-1.0 && (lomax-lomin)<=90.0)
-		yave += 0.0;
+      yave += 0.0;
 	  else if (hemi==1.0 && (lomax-lomin)<=90.0)
-		yave += 1.0;
+      yave += 1.0;
 
-  	  w1 = 0.5*(xmax-xmin)*(y2-y1)/(x2-x1);
-	  if (w1 < 1.0)
-		gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
-	  else if (w1 < 2.0)
-		gxscal (xmin+0.5*w1, xmax-0.5*w1, yave-1.25*w1,
-			yave+1.25*w1, x1, x2, y1, y2 );
-	  else if (w1 < 3.0)
-		gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
-	  else if (w1 > 3.0)
-		gxscal (xave-0.5*w1, xave+0.5*w1, yave-0.5*w1,
-			yave+0.5*w1, x1, x2, y1, y2 );
-	  else
-  	  	gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
-	}
+    w1 = 0.5*(xmax-xmin)*(y2-y1)/(x2-x1);
+	  if (applychg) {
+      if (w1 < 1.0)
+        gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+      else if (w1 < 2.0)
+        gxscal (xmin+0.5*w1, xmax-0.5*w1, yave-1.25*w1, yave+1.25*w1, x1, x2, y1, y2 );
+      else if (w1 < 3.0)
+        gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+      else if (w1 > 3.0)
+        gxscal (xave-0.5*w1, xave+0.5*w1, yave-0.5*w1, yave+0.5*w1, x1, x2, y1, y2 );
+      else
+        gxscal (xmin, xmax, yave-w1, yave+w1, x1, x2, y1, y2 );
+	  }
+  }
 
-  	mpj->axmn = xmin;  mpj->axmx = xmax;
-  	mpj->aymn = ymin;  mpj->aymx = ymax;
+  mpj->axmn = xmin;  mpj->axmx = xmax;
+  mpj->aymn = ymin;  mpj->aymx = ymax;
 
-  	gxproj (gxlamcp);
-	gxback (gxlamcb);
-  	adjtyp = 3;
-  	return (0);
+  if (applychg) {
+    gxproj (gxlamcp);
+    gxback (gxlamcb);
+    adjtyp = 3;
+  }
+  return (0);
 }
 
 

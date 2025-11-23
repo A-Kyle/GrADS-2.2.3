@@ -2,8 +2,14 @@ Makefile
 bin/
 config.log
 config.status
+example/
+fonts/
 lib/
 libtool
+scripts/
+shp/
+*.png
+*.gs
 src/.libs/
 src/Makefile
 src/bufrscan
